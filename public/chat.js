@@ -37,8 +37,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
     return `hsl(${Math.abs(hash) % 360}, 65%, 45%)`;
   }
   function avatarLabel(str){
-    const digits = str.replace(/\D/g,'');
-    return digits.slice(-2) || '?';
+    return str.slice(0, 2).toUpperCase();
   }
 
   function isNearBottom(){
