@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", ()=>{
   const socket = io();
   const messages = document.getElementById("messages");
+  const messagesWrapper = document.getElementById("messagesWrapper");
   const input = document.getElementById("input");
   const sendBtn = document.getElementById("sendBtn");
   const chatTitle = document.getElementById("chatTitle");
@@ -20,6 +21,14 @@ document.addEventListener("DOMContentLoaded", ()=>{
   function avatarLabel(str){
     const digits = str.replace(/\D/g,'');
     return digits.slice(-2) || '?';
+  }
+
+  function isNearBottom(){
+    return messagesWrapper.scrollHeight - messagesWrapper.scrollTop - messagesWrapper.clientHeight < 100;
+  }
+
+  function scrollToBottom(){
+    messagesWrapper.scrollTop = messagesWrapper.scrollHeight;
   }
 
   chatTitle.textContent = currentChat;
@@ -57,6 +66,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
   socket.on("history", msgs=>{
     messages.innerHTML="";
     msgs.forEach(msg=>addMessage(msg));
+    scrollToBottom();
   });
 
   socket.on("message", msg=>addMessage(msg));
@@ -114,9 +124,13 @@ document.addEventListener("DOMContentLoaded", ()=>{
       bubble.appendChild(delBtn);
     }
 
+    const wasNearBottom = isNearBottom();
     wrapper.appendChild(bubble);
     messages.appendChild(wrapper);
-    messages.scrollTop = messages.scrollHeight;
+
+    if(from === currentUser || wasNearBottom){
+      scrollToBottom();
+    }
   }
 
   function getTime(){
