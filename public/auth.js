@@ -9,21 +9,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const regName = document.getElementById("regName");
   const regPassword = document.getElementById("regPassword");
 
-  function normalizePhone(input){
-    return input.replace(/\D/g,'');
-  }
+  const USERNAME_REGEX = /^[a-zA-Zа-яА-ЯёЁ0-9_.-]{3,20}$/;
 
-  function setupAutoPlus7(input){
-    input.addEventListener("focus", ()=>{
-      if(!input.value.startsWith("+7")) input.value = "+7";
-    });
-    input.addEventListener("input", ()=>{
-      if(!input.value.startsWith("+7")) input.value = "+7" + input.value.replace(/\D/g,'');
-    });
+  function isValidUsername(username){
+    return USERNAME_REGEX.test(username);
   }
-
-  setupAutoPlus7(loginName);
-  setupAutoPlus7(regName);
 
   loginTab.addEventListener("click", ()=>{
     loginForm.classList.remove("hidden");
@@ -41,19 +31,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
   registerForm.addEventListener("submit", async (e)=>{
     e.preventDefault();
-    const phone = normalizePhone(regName.value.trim());
+    const username = regName.value.trim();
     const password = regPassword.value.trim();
-    if(!phone || !password){ alert("Заполните все поля"); return; }
+    if(!username || !password){ alert("Заполните все поля"); return; }
+    if(!isValidUsername(username)){
+      alert("Ник: 3-20 символов, разрешены буквы, цифры, _ . -");
+      return;
+    }
 
     try{
       const res = await fetch("/register", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({phone, password})
+        body: JSON.stringify({username, password})
       });
       const data = await res.json();
       if(res.ok){
-        localStorage.setItem("currentUser", phone);
+        localStorage.setItem("currentUser", username);
         window.location.replace("chats.html");
       } else alert(data.error);
     } catch(err){ alert("Ошибка сервера"); }
@@ -61,19 +55,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
   loginForm.addEventListener("submit", async (e)=>{
     e.preventDefault();
-    const phone = normalizePhone(loginName.value.trim());
+    const username = loginName.value.trim();
     const password = loginPassword.value.trim();
-    if(!phone || !password){ alert("Заполните все поля"); return; }
+    if(!username || !password){ alert("Заполните все поля"); return; }
 
     try{
       const res = await fetch("/login", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({phone, password})
+        body: JSON.stringify({username, password})
       });
       const data = await res.json();
       if(res.ok){
-        localStorage.setItem("currentUser", phone);
+        localStorage.setItem("currentUser", username);
         window.location.replace("chats.html");
       } else alert(data.error);
     } catch(err){ alert("Ошибка сервера"); }
