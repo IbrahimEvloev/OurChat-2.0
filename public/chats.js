@@ -62,27 +62,25 @@ document.addEventListener("DOMContentLoaded", ()=>{
     return row;
   }
 
-  // Список чатов (все зарегистрированные пользователи кроме текущего)
+  // Список чатов — только те, с кем уже есть переписка
   async function renderChats(){
     chatList.innerHTML = "";
     try{
-      const [usersRes, lastMsgRes] = await Promise.all([
-        fetch("/search?username="),
-        fetch(`/last-messages?user=${encodeURIComponent(currentUser)}`)
-      ]);
-      if(!usersRes.ok) return;
-      const allUsers = await usersRes.json();
-      const lastMessages = lastMsgRes.ok ? await lastMsgRes.json() : {};
+      const res = await fetch(`/last-messages?user=${encodeURIComponent(currentUser)}`);
+      const lastMessages = res.ok ? await res.json() : {};
+      const contacts = Object.keys(lastMessages);
 
-      const contacts = allUsers.filter(u => u !== currentUser);
-      contacts.sort((a,b)=>{
-        const ma = lastMessages[a], mb = lastMessages[b];
-        if(ma && mb) return mb.id - ma.id;
-        if(ma) return -1;
-        if(mb) return 1;
-        return 0;
-      });
+      if(contacts.length === 0){
+        chatList.innerHTML = `
+          <div class="h-full flex flex-col items-center justify-center text-center px-8 text-gray-400 gap-1">
+            <div class="text-3xl mb-2">💬</div>
+            <div class="text-sm">Пока нет ни одного чата</div>
+            <div class="text-xs">Найдите собеседника через поиск сверху</div>
+          </div>`;
+        return;
+      }
 
+      contacts.sort((a,b)=> lastMessages[b].id - lastMessages[a].id);
       contacts.forEach(u=>{
         chatList.appendChild(buildContactRow(u, lastMessages[u]));
       });
