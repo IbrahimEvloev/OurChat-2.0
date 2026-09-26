@@ -16,11 +16,17 @@ app.use(express.json());
 const publicPath = path.join(__dirname, "public");
 app.use(express.static(publicPath));
 
-let users = {}; // { phone: { passwordHash, online } }
+let users = {}; // { username: { passwordHash, online } }
 let chats = {}; // { chatId: [ { id, text, from, time, read, edited, replyTo } ] }
 
-const socketUser = {};   // socket.id -> phone
-const onlineCounts = {}; // phone -> number of open sockets
+const socketUser = {};   // socket.id -> username
+const onlineCounts = {}; // username -> number of open sockets
+
+const USERNAME_REGEX = /^[a-zA-Zа-яА-ЯёЁ0-9_.-]{3,20}$/;
+
+function isValidUsername(username) {
+  return typeof username === "string" && USERNAME_REGEX.test(username);
+}
 
 function chatIdFor(a, b) {
   return [a, b].sort().join("_");
@@ -28,18 +34,21 @@ function chatIdFor(a, b) {
 
 // Регистрация
 app.post("/register", async (req, res) => {
-  const { phone, password } = req.body;
-  if (!phone || !password) return res.status(400).json({ error: "Заполните все поля" });
-  if (users[phone]) return res.status(400).json({ error: "Пользователь уже существует" });
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: "Заполните все поля" });
+  if (!isValidUsername(username)) {
+    return res.status(400).json({ error: "Ник: 3-20 символов, разрешены буквы, цифры, _ . -" });
+  }
+  if (users[username]) return res.status(400).json({ error: "Такой ник уже занят" });
   const passwordHash = await bcrypt.hash(password, 10);
-  users[phone] = { passwordHash, online: false };
+  users[username] = { passwordHash, online: false };
   res.json({ success: true });
 });
 
 // Вход
 app.post("/login", async (req, res) => {
-  const { phone, password } = req.body;
-  const user = users[phone];
+  const { username, password } = req.body;
+  const user = users[username];
   if (!user) return res.status(400).json({ error: "Неверные данные" });
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) return res.status(400).json({ error: "Неверные данные" });
@@ -49,25 +58,25 @@ app.post("/login", async (req, res) => {
 
 // Выход
 app.post("/logout", (req, res) => {
-  const { phone } = req.body;
-  if (users[phone]) users[phone].online = false;
+  const { username } = req.body;
+  if (users[username]) users[username].online = false;
   res.json({ success: true });
 });
 
 // Поиск / список пользователей
 app.get("/search", (req, res) => {
-  const { phone } = req.query;
-  if (!phone) return res.json(Object.keys(users));
-  const results = Object.keys(users).filter((u) => u.includes(phone));
+  const { username } = req.query;
+  if (!username) return res.json(Object.keys(users));
+  const results = Object.keys(users).filter((u) => u.includes(username));
   if (results.length === 0) return res.status(404).json({ error: "Пользователь не найден" });
   res.json(results);
 });
 
 // Текущий онлайн-статус пользователя
 app.get("/status", (req, res) => {
-  const { user } = req.query;
-  if (!user) return res.json({ online: false });
-  res.json({ online: !!(users[user] && users[user].online) });
+  const { username } = req.query;
+  if (!username) return res.json({ online: false });
+  res.json({ online: !!(users[username] && users[username].online) });
 });
 
 // Последнее сообщение с каждым собеседником (для превью в списке чатов)
