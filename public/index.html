@@ -18,14 +18,14 @@
 
   <!-- Вход -->
   <form id="loginForm" class="flex flex-col gap-3">
-    <input id="loginName" type="tel" placeholder="Номер телефона" class="border rounded-xl px-4 py-2">
+    <input id="loginName" type="text" placeholder="Ник" maxlength="20" class="border rounded-xl px-4 py-2">
     <input id="loginPassword" type="password" placeholder="Пароль" class="border rounded-xl px-4 py-2">
     <button type="submit" class="py-2 rounded-xl bg-blue-500 text-white hover:bg-blue-600">Войти</button>
   </form>
 
   <!-- Регистрация -->
   <form id="registerForm" class="flex flex-col gap-3 hidden">
-    <input id="regName" type="tel" placeholder="Номер телефона" class="border rounded-xl px-4 py-2">
+    <input id="regName" type="text" placeholder="Ник" maxlength="20" class="border rounded-xl px-4 py-2">
     <input id="regPassword" type="password" placeholder="Пароль" class="border rounded-xl px-4 py-2">
     <button type="submit" class="py-2 rounded-xl bg-green-500 text-white hover:bg-green-600">Зарегистрироваться</button>
   </form>
