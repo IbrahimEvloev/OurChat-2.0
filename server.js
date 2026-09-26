@@ -19,6 +19,9 @@ app.use(express.static(publicPath));
 let users = {}; // { phone: { passwordHash, online } }
 let chats = {}; // { chatId: [ { id, text, from, time } ] }
 
+const socketUser = {};   // socket.id -> phone
+const onlineCounts = {}; // phone -> number of open sockets
+
 function chatIdFor(a, b) {
   return [a, b].sort().join("_");
 }
@@ -60,9 +63,40 @@ app.get("/search", (req, res) => {
   res.json(results);
 });
 
+// Текущий онлайн-статус пользователя
+app.get("/status", (req, res) => {
+  const { user } = req.query;
+  if (!user) return res.json({ online: false });
+  res.json({ online: !!(users[user] && users[user].online) });
+});
+
+// Последнее сообщение с каждым собеседником (для превью в списке чатов)
+app.get("/last-messages", (req, res) => {
+  const { user } = req.query;
+  if (!user) return res.json({});
+  const result = {};
+  for (const chatId in chats) {
+    const [a, b] = chatId.split("_");
+    if (a === user || b === user) {
+      const other = a === user ? b : a;
+      const msgs = chats[chatId];
+      if (msgs.length) result[other] = msgs[msgs.length - 1];
+    }
+  }
+  res.json(result);
+});
+
 // Socket.IO
 io.on("connection", (socket) => {
   console.log("Пользователь подключился:", socket.id);
+
+  socket.on("identify", ({ user }) => {
+    if (!user) return;
+    socketUser[socket.id] = user;
+    onlineCounts[user] = (onlineCounts[user] || 0) + 1;
+    if (users[user]) users[user].online = true;
+    io.emit("presence", { user, online: true });
+  });
 
   socket.on("join", ({ chat, user }) => {
     if (!chat || !user) return;
@@ -80,7 +114,36 @@ io.on("connection", (socket) => {
     io.to(chatId).emit("message", msg);
   });
 
-  socket.on("disconnect", () => console.log("Пользователь отключился:", socket.id));
+  socket.on("typing", ({ chat, user }) => {
+    if (!chat || !user) return;
+    const chatId = chatIdFor(chat, user);
+    socket.to(chatId).emit("typing", { from: user });
+  });
+
+  socket.on("delete-message", ({ chat, user, msgId }) => {
+    if (!chat || !user || !msgId) return;
+    const chatId = chatIdFor(chat, user);
+    const arr = chats[chatId];
+    if (!arr) return;
+    const idx = arr.findIndex((m) => m.id === msgId && m.from === user);
+    if (idx !== -1) {
+      arr.splice(idx, 1);
+      io.to(chatId).emit("message-deleted", { id: msgId });
+    }
+  });
+
+  socket.on("disconnect", () => {
+    const user = socketUser[socket.id];
+    if (user) {
+      onlineCounts[user] = Math.max(0, (onlineCounts[user] || 1) - 1);
+      if (onlineCounts[user] === 0) {
+        if (users[user]) users[user].online = false;
+        io.emit("presence", { user, online: false });
+      }
+      delete socketUser[socket.id];
+    }
+    console.log("Пользователь отключился:", socket.id);
+  });
 });
 
 app.get("/", (req, res) => res.sendFile(path.join(publicPath, "index.html")));
