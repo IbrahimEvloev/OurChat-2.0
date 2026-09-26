@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OurChat — Чат</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="h-[100dvh] bg-gray-100 flex justify-center items-center">
+
+<div class="max-w-md w-full h-full bg-white flex flex-col">
+  <div id="chatHeader" class="p-3 border-b flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <button id="backBtn" class="text-blue-500 text-xl leading-none px-1">←</button>
+      <span id="chatTitle" class="text-lg font-semibold">Чат</span>
+      <span id="chatStatus" class="text-sm"></span>
+    </div>
+  </div>
+
+  <div id="messagesWrapper" class="flex-1 p-3 overflow-y-auto bg-gray-50">
+    <div id="messages" class="flex flex-col gap-2"></div>
+  </div>
+
+  <div class="p-2 border-t flex gap-2">
+    <input id="input" type="text" placeholder="Сообщение..." class="flex-1 border rounded-xl px-3 py-2">
+    <button id="sendBtn" class="px-4 py-2 rounded-xl bg-blue-500 text-white">Отправить</button>
+  </div>
+</div>
+
+<script src="chat.js"></script>
+</body>
+</html>

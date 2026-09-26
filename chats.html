@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OurChat — Чаты</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="h-[100dvh] bg-gray-100 flex flex-col items-center">
+
+<div class="max-w-md w-full h-full bg-white flex flex-col">
+  <div class="p-3 font-semibold border-b flex justify-between items-center">
+    <span>OurChat</span>
+    <button id="logoutBtn" class="px-3 py-1.5 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600">Выйти</button>
+  </div>
+
+  <div class="p-2 border-b">
+    <input id="searchInput" type="text" placeholder="Поиск..." class="w-full border rounded-xl px-3 py-2"/>
+  </div>
+
+  <div id="searchResult" class="p-2 text-sm text-blue-600"></div>
+  <div id="chatList" class="flex-1 overflow-y-auto"></div>
+</div>
+
+<div id="logoutModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center">
+  <div class="bg-white rounded-2xl p-6 w-80 text-center">
+    <p class="mb-4">Вы точно хотите выйти?</p>
+    <div class="flex justify-center gap-4">
+      <button id="confirmLogout" class="px-4 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600">Выйти</button>
+      <button id="cancelLogout" class="px-4 py-2 bg-gray-300 rounded-xl hover:bg-gray-400">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<script src="chats.js"></script>
+</body>
+</html>
