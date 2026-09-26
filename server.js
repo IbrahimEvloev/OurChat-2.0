@@ -17,7 +17,7 @@ const publicPath = path.join(__dirname, "public");
 app.use(express.static(publicPath));
 
 let users = {}; // { phone: { passwordHash, online } }
-let chats = {}; // { chatId: [ { id, text, from, time } ] }
+let chats = {}; // { chatId: [ { id, text, from, time, read, edited, replyTo } ] }
 
 const socketUser = {};   // socket.id -> phone
 const onlineCounts = {}; // phone -> number of open sockets
@@ -112,6 +112,36 @@ io.on("connection", (socket) => {
     if (!chats[chatId]) chats[chatId] = [];
     chats[chatId].push(msg);
     io.to(chatId).emit("message", msg);
+  });
+
+  socket.on("edit-message", ({ chat, user, msgId, text }) => {
+    if (!chat || !user || !msgId || !text) return;
+    const chatId = chatIdFor(chat, user);
+    const arr = chats[chatId];
+    if (!arr) return;
+    const msg = arr.find((m) => m.id === msgId && m.from === user);
+    if (!msg) return;
+    msg.text = text;
+    msg.edited = true;
+    io.to(chatId).emit("message-edited", { id: msgId, text, edited: true });
+  });
+
+  // Пользователь ("user") подтверждает, что прочитал сообщения от собеседника ("chat")
+  socket.on("read", ({ chat, user }) => {
+    if (!chat || !user) return;
+    const chatId = chatIdFor(chat, user);
+    const arr = chats[chatId];
+    if (!arr) return;
+    const ids = [];
+    arr.forEach((m) => {
+      if (m.from === chat && !m.read) {
+        m.read = true;
+        ids.push(m.id);
+      }
+    });
+    if (ids.length) {
+      io.to(chatId).emit("messages-read", { reader: user, ids });
+    }
   });
 
   socket.on("typing", ({ chat, user }) => {
