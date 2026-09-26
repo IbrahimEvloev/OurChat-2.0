@@ -15,18 +15,22 @@ document.addEventListener("DOMContentLoaded", () => {
     return USERNAME_REGEX.test(username);
   }
 
+  const tabTrack = document.getElementById("tabTrack");
+
   loginTab.addEventListener("click", ()=>{
     loginForm.classList.remove("hidden");
     registerForm.classList.add("hidden");
-    loginTab.classList.add("border-blue-500","border-b-2");
-    registerTab.classList.remove("border-blue-500","border-b-2");
+    loginTab.classList.add("is-active");
+    registerTab.classList.remove("is-active");
+    tabTrack.classList.remove("is-register");
   });
 
   registerTab.addEventListener("click", ()=>{
     loginForm.classList.add("hidden");
     registerForm.classList.remove("hidden");
-    registerTab.classList.add("border-blue-500","border-b-2");
-    loginTab.classList.remove("border-blue-500","border-b-2");
+    registerTab.classList.add("is-active");
+    loginTab.classList.remove("is-active");
+    tabTrack.classList.add("is-register");
   });
 
   registerForm.addEventListener("submit", async (e)=>{
