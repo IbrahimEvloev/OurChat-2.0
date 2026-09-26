@@ -17,31 +17,30 @@ document.addEventListener("DOMContentLoaded", ()=>{
     return `hsl(${Math.abs(hash) % 360}, 65%, 45%)`;
   }
   function avatarLabel(str){
-    const digits = str.replace(/\D/g,'');
-    return digits.slice(-2) || '?';
+    return str.slice(0, 2).toUpperCase();
   }
 
-  function openChat(phone){
-    localStorage.setItem("currentChat", phone);
+  function openChat(username){
+    localStorage.setItem("currentChat", username);
     window.location.href="chat.html";
   }
 
-  function buildContactRow(phone, lastMsg){
+  function buildContactRow(username, lastMsg){
     const row = document.createElement("div");
     row.className = "p-3 border-b cursor-pointer hover:bg-gray-100 flex items-center gap-3";
-    row.addEventListener("click", ()=> openChat(phone));
+    row.addEventListener("click", ()=> openChat(username));
 
     const avatar = document.createElement("div");
     avatar.className = "w-11 h-11 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0";
-    avatar.style.backgroundColor = avatarColor(phone);
-    avatar.textContent = avatarLabel(phone);
+    avatar.style.backgroundColor = avatarColor(username);
+    avatar.textContent = avatarLabel(username);
 
     const info = document.createElement("div");
     info.className = "flex-1 min-w-0";
 
     const nameDiv = document.createElement("div");
     nameDiv.className = "font-medium truncate";
-    nameDiv.textContent = phone;
+    nameDiv.textContent = username;
 
     const previewDiv = document.createElement("div");
     previewDiv.className = "text-sm text-gray-500 truncate";
@@ -68,7 +67,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
     chatList.innerHTML = "";
     try{
       const [usersRes, lastMsgRes] = await Promise.all([
-        fetch("/search?phone="),
+        fetch("/search?username="),
         fetch(`/last-messages?user=${encodeURIComponent(currentUser)}`)
       ]);
       if(!usersRes.ok) return;
@@ -101,28 +100,28 @@ document.addEventListener("DOMContentLoaded", ()=>{
     }
 
     try {
-      const res = await fetch(`/search?phone=${encodeURIComponent(query)}`);
+      const res = await fetch(`/search?username=${encodeURIComponent(query)}`);
       const data = await res.json();
       searchResult.innerHTML = "";
       if (res.ok) {
         data
           .filter(u => u !== currentUser)
-          .forEach(phone => {
+          .forEach(username => {
             const row = document.createElement("div");
             row.className = "flex items-center gap-2 cursor-pointer mb-1";
 
             const avatar = document.createElement("div");
             avatar.className = "w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0";
-            avatar.style.backgroundColor = avatarColor(phone);
-            avatar.textContent = avatarLabel(phone);
+            avatar.style.backgroundColor = avatarColor(username);
+            avatar.textContent = avatarLabel(username);
 
             const label = document.createElement("span");
             label.className = "text-blue-600 hover:underline";
-            label.textContent = phone;
+            label.textContent = username;
 
             row.appendChild(avatar);
             row.appendChild(label);
-            row.addEventListener("click", () => openChat(phone));
+            row.addEventListener("click", () => openChat(username));
             searchResult.appendChild(row);
           });
       } else searchResult.textContent = data.error;
