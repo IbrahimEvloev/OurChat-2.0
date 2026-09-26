@@ -6,60 +6,51 @@
 <title>OurChat — Вход / Регистрация</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   :root{
-    --bg-a: #141726;
-    --bg-b: #1F2440;
-    --mine: #FF6F59;
-    --theirs: #4DD0C4;
-    --ink: #F3F1EC;
-    --muted: #B8BEDA;
+    --bg: #F5F4F2;
+    --dot: rgba(120,110,130,0.22);
+    --mine: #4A4A52;
+    --theirs: #5C5C66;
+    --ink: #3A3550;
+    --muted: #8E88A8;
+    --card: rgba(255,255,255,0.65);
   }
   html, body { height: 100%; }
   body{
     font-family: 'Manrope', sans-serif;
-    background: radial-gradient(120% 120% at 15% 0%, var(--bg-b) 0%, var(--bg-a) 55%);
     color: var(--ink);
+    background-color: #FFFFFF;
   }
   .wordmark{
     font-family: 'Fraunces', serif;
-    font-optical-sizing: auto;
+    font-weight: 700;
     letter-spacing: -0.02em;
+    color: #232228;
   }
-  .blob{
-    position: absolute;
-    border-radius: 999px;
-    filter: blur(60px);
-    opacity: 0.35;
+  .card{
+    background: var(--card);
+    border: 1px solid rgba(255,255,255,0.7);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 20px 50px -22px rgba(90, 70, 140, 0.3);
   }
-  .blob-mine{ background: var(--mine); }
-  .blob-theirs{ background: var(--theirs); }
-  @media (prefers-reduced-motion: no-preference){
-    .blob-drift{ animation: drift 14s ease-in-out infinite; }
-  }
-  @keyframes drift{
-    0%, 100% { transform: translate(0, 0); }
-    50% { transform: translate(14px, -18px); }
-  }
-
   .field{
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.7);
+    border: 1px solid rgba(140,120,180,0.2);
     color: var(--ink);
   }
   .field::placeholder{ color: var(--muted); }
   .field:focus{
     outline: none;
     border-color: var(--theirs);
-    box-shadow: 0 0 0 3px rgba(77,208,196,0.25);
+    box-shadow: 0 0 0 3px rgba(47,167,154,0.25);
   }
-
   .tab-track{
     position: relative;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.10);
+    background: rgba(255,255,255,0.55);
+    border: 1px solid rgba(140,120,180,0.18);
   }
   .tab-thumb{
     position: absolute;
@@ -68,61 +59,47 @@
     background: var(--mine);
     border-radius: 9999px;
     transition: transform 0.28s cubic-bezier(.4,0,.2,1), background-color 0.28s ease;
+    box-shadow: 0 4px 12px -2px rgba(74,74,82,0.5);
   }
   .tab-track.is-register .tab-thumb{
     transform: translateX(100%);
     background: var(--theirs);
+    box-shadow: 0 4px 12px -2px rgba(92,92,102,0.5);
   }
-  .tab-btn{
-    position: relative;
-    z-index: 1;
-    color: var(--muted);
-    transition: color 0.2s ease;
-  }
-  .tab-btn.is-active{ color: #12141F; font-weight: 600; }
-
+  .tab-btn{ position: relative; z-index: 1; color: var(--muted); transition: color 0.2s ease; }
+  .tab-btn.is-active{ color: #fff; font-weight: 600; }
   .cta{
     background: var(--mine);
-    color: #1A1120;
+    color: #FFF3EE;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
-  .cta:hover{ transform: translateY(-1px); box-shadow: 0 8px 20px rgba(255,111,89,0.30); }
-  .cta:active{ transform: translateY(0); }
-  .cta.is-register{ background: var(--theirs); }
-  .cta.is-register:hover{ box-shadow: 0 8px 20px rgba(77,208,196,0.30); }
-
+  .cta:hover{ transform: translateY(-1px); box-shadow: 0 10px 22px -4px rgba(74,74,82,0.4); }
+  .cta.is-register{ background: var(--theirs); color:#F5F4F6; }
+  .cta.is-register:hover{ box-shadow: 0 10px 22px -4px rgba(92,92,102,0.4); }
   @media (prefers-reduced-motion: reduce){
     .tab-thumb, .cta{ transition: none; }
   }
 </style>
 </head>
-<body class="min-h-[100dvh] flex items-center justify-center relative">
-
-  <div class="absolute inset-0 overflow-hidden pointer-events-none">
-    <div class="blob blob-mine blob-drift w-72 h-72 -top-10 -left-16"></div>
-    <div class="blob blob-theirs w-80 h-80 bottom-0 -right-20"></div>
-  </div>
+<body class="min-h-[100dvh] flex items-center justify-center relative overflow-hidden">
 
   <div class="relative w-full max-w-md px-6 py-10 flex flex-col gap-8">
-
     <div class="text-center flex flex-col gap-2">
       <h1 class="wordmark text-4xl sm:text-5xl">OurChat</h1>
       <p class="text-sm" style="color:var(--muted)">Простой чат для своих — без лишнего</p>
     </div>
 
-    <div class="flex flex-col gap-5">
+    <div class="card rounded-3xl p-6 flex flex-col gap-5">
       <div id="tabTrack" class="tab-track rounded-full p-1 flex">
         <div class="tab-thumb"></div>
         <button type="button" id="loginTab" class="tab-btn is-active flex-1 py-2.5 rounded-full text-sm">Вход</button>
         <button type="button" id="registerTab" class="tab-btn flex-1 py-2.5 rounded-full text-sm">Регистрация</button>
       </div>
-
       <form id="loginForm" class="flex flex-col gap-3">
         <input id="loginName" type="text" placeholder="Ник" maxlength="20" autocomplete="username" class="field rounded-xl px-4 py-3 text-sm">
         <input id="loginPassword" type="password" placeholder="Пароль" autocomplete="current-password" class="field rounded-xl px-4 py-3 text-sm">
         <button type="submit" class="cta rounded-xl py-3 text-sm font-semibold mt-1">Войти</button>
       </form>
-
       <form id="registerForm" class="flex flex-col gap-3 hidden">
         <input id="regName" type="text" placeholder="Ник" maxlength="20" autocomplete="username" class="field rounded-xl px-4 py-3 text-sm">
         <input id="regPassword" type="password" placeholder="Пароль" autocomplete="new-password" class="field rounded-xl px-4 py-3 text-sm">
