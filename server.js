@@ -121,6 +121,7 @@ io.on("connection", (socket) => {
     if (!chats[chatId]) chats[chatId] = [];
     chats[chatId].push(msg);
     io.to(chatId).emit("message", msg);
+    io.emit("notify", { to: chat, from: user, preview: msg.audio ? "🎤 Голосовое сообщение" : msg.text });
   });
 
   socket.on("edit-message", ({ chat, user, msgId, text }) => {
