@@ -23,7 +23,6 @@ document.addEventListener("DOMContentLoaded", ()=>{
   const msgMenu = document.getElementById("msgMenu");
   const msgMenuBackdrop = document.getElementById("msgMenuBackdrop");
   const msgMenuBox = document.getElementById("msgMenuBox");
-  const menuReply = document.getElementById("menuReply");
   const menuCopy = document.getElementById("menuCopy");
   const menuEdit = document.getElementById("menuEdit");
   const menuDelete = document.getElementById("menuDelete");
@@ -232,7 +231,6 @@ document.addEventListener("DOMContentLoaded", ()=>{
     menuEdit.classList.toggle("hidden", !isOwn);
     menuDelete.classList.toggle("hidden", !isOwn);
     msgMenu.classList.remove("hidden");
-
     requestAnimationFrame(()=>{
       const rect = msgMenuBox.getBoundingClientRect();
       const left = Math.max(8, Math.min(x, window.innerWidth - rect.width - 8));
@@ -247,10 +245,6 @@ document.addEventListener("DOMContentLoaded", ()=>{
   }
 
   msgMenuBackdrop.addEventListener("click", closeMessageMenu);
-  menuReply.addEventListener("click", ()=>{
-    if(activeMenuMessage) startReply(activeMenuMessage);
-    closeMessageMenu();
-  });
   menuCopy.addEventListener("click", ()=>{
     if(activeMenuMessage){
       const text = activeMenuMessage.text;
@@ -280,14 +274,31 @@ document.addEventListener("DOMContentLoaded", ()=>{
     closeMessageMenu();
   });
 
-  // ---------- Жесты: удержание -> меню, свайп вправо -> ответить ----------
-  function attachGestures(wrapper, bubble, replyIconEl, getMsg){
+  // ---------- Жесты: удержание -> показать точки, свайп вправо -> ответить ----------
+  function attachGestures(wrapper, bubble, replyIconEl, dotsBtn, getMsg){
     let longPressTimer = null;
     let startX = 0, startY = 0;
     let dragging = false;
     let currentDx = 0;
     const THRESHOLD = 56;
     const MAX_DRAG = 72;
+
+    function revealDots(){
+      dotsBtn.style.opacity = "1";
+      dotsBtn.style.pointerEvents = "auto";
+      const hideOnOutsideClick = (e)=>{
+        if(e.target !== dotsBtn && !dotsBtn.contains(e.target)){
+          dotsBtn.style.opacity = "0";
+          dotsBtn.style.pointerEvents = "none";
+          document.removeEventListener("click", hideOnOutsideClick, true);
+          document.removeEventListener("touchstart", hideOnOutsideClick, true);
+        }
+      };
+      setTimeout(()=>{
+        document.addEventListener("click", hideOnOutsideClick, true);
+        document.addEventListener("touchstart", hideOnOutsideClick, true);
+      }, 50);
+    }
 
     function setDx(dx){
       currentDx = dx;
@@ -307,7 +318,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
     function onDown(x, y){
       startX = x; startY = y;
       dragging = false;
-      longPressTimer = setTimeout(()=> openMessageMenu(getMsg(), x, y), 450);
+      longPressTimer = setTimeout(revealDots, 450);
     }
     function onMove(x, y){
       const dx = x - startX;
@@ -381,8 +392,11 @@ document.addEventListener("DOMContentLoaded", ()=>{
     bubble.style.webkitTouchCallout = "none";
 
     const dotsBtn = document.createElement("button");
-    dotsBtn.className = "absolute top-1 right-1 p-1 rounded-full opacity-60 hover:opacity-100";
+    dotsBtn.className = "absolute top-1 right-1 p-1 rounded-full";
     dotsBtn.style.color = "currentColor";
+    dotsBtn.style.opacity = "0";
+    dotsBtn.style.pointerEvents = "none";
+    dotsBtn.style.transition = "opacity 0.15s ease";
     dotsBtn.innerHTML = DOTS_ICON;
     dotsBtn.addEventListener("click", (e)=>{
       e.stopPropagation();
@@ -441,7 +455,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
     bubble.appendChild(timeDiv);
     wrapper.appendChild(bubble);
 
-    attachGestures(wrapper, bubble, replyIcon, ()=>({
+    attachGestures(wrapper, bubble, replyIcon, dotsBtn, ()=>({
       id,
       from,
       text: bubble.querySelector(".msg-text").textContent
