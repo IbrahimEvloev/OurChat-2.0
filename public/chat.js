@@ -4,6 +4,12 @@ document.addEventListener("DOMContentLoaded", ()=>{
   const messagesWrapper = document.getElementById("messagesWrapper");
   const input = document.getElementById("input");
   const sendBtn = document.getElementById("sendBtn");
+  const micBtn = document.getElementById("micBtn");
+  const composerBar = document.getElementById("composerBar");
+  const recordingBar = document.getElementById("recordingBar");
+  const recordTimer = document.getElementById("recordTimer");
+  const cancelRecordBtn = document.getElementById("cancelRecordBtn");
+  const sendRecordBtn = document.getElementById("sendRecordBtn");
   const chatTitle = document.getElementById("chatTitle");
   const chatStatus = document.getElementById("chatStatus");
   const chatAvatar = document.getElementById("chatAvatar");
@@ -37,6 +43,8 @@ document.addEventListener("DOMContentLoaded", ()=>{
   const CHECK_DOUBLE = `<svg width="18" height="16" viewBox="0 0 18 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 8.5l3 3 7-7.5"/><path d="M6.5 8.5l3 3 7-7.5"/></svg>`;
   const DOTS_ICON = `<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><circle cx="4" cy="10" r="1.8"/><circle cx="10" cy="10" r="1.8"/><circle cx="16" cy="10" r="1.8"/></svg>`;
   const REPLY_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17l-5-5 5-5"/><path d="M4 12h10a5 5 0 0 1 5 5v1"/></svg>`;
+  const PLAY_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+  const PAUSE_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>`;
 
   globalDotsBtn.innerHTML = DOTS_ICON;
 
@@ -191,9 +199,9 @@ document.addEventListener("DOMContentLoaded", ()=>{
 
   function startReply(msg){
     cancelEdit();
-    replyingTo = { id: msg.id, text: msg.text, from: msg.from };
+    replyingTo = { id: msg.id, text: msg.text, from: msg.from, audio: !!msg.audio };
     replyPreviewName.textContent = msg.from === currentUser ? "Вы" : currentChat;
-    replyPreviewText.textContent = msg.text;
+    replyPreviewText.textContent = msg.audio ? "🎤 Голосовое сообщение" : msg.text;
     replyPreview.classList.remove("hidden");
     replyPreview.classList.add("flex");
     input.focus();
@@ -266,7 +274,8 @@ document.addEventListener("DOMContentLoaded", ()=>{
   function openMessageMenu(msg, x, y){
     activeMenuMessage = msg;
     const isOwn = msg.from === currentUser;
-    menuEdit.classList.toggle("hidden", !isOwn);
+    menuEdit.classList.toggle("hidden", !isOwn || !!msg.audio);
+    menuCopy.classList.toggle("hidden", !!msg.audio);
     menuDelete.classList.toggle("hidden", !isOwn);
     msgMenu.classList.remove("hidden");
     requestAnimationFrame(()=>{
@@ -387,9 +396,60 @@ document.addEventListener("DOMContentLoaded", ()=>{
     setTimeout(()=> { el.style.boxShadow = ""; }, 1000);
   }
 
+  function buildVoicePlayer(src, duration, isOwn){
+    const wrap = document.createElement("div");
+    wrap.className = "flex items-center gap-2 py-1";
+    wrap.style.minWidth = "160px";
+
+    const playBtn = document.createElement("button");
+    playBtn.className = "w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center";
+    playBtn.style.background = isOwn ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.08)";
+    playBtn.style.color = isOwn ? "#fff" : "var(--mine)";
+    playBtn.innerHTML = PLAY_ICON;
+
+    const barWrap = document.createElement("div");
+    barWrap.className = "flex-1 h-1 rounded-full overflow-hidden";
+    barWrap.style.background = isOwn ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.12)";
+    const bar = document.createElement("div");
+    bar.style.height = "100%";
+    bar.style.width = "0%";
+    bar.style.background = isOwn ? "#fff" : "var(--mine)";
+    barWrap.appendChild(bar);
+
+    const timeLabel = document.createElement("span");
+    timeLabel.className = "text-xs tabular-nums flex-shrink-0";
+    timeLabel.style.opacity = "0.8";
+    timeLabel.textContent = formatDuration(duration || 0);
+
+    const audioEl = new Audio(src);
+
+    playBtn.addEventListener("click", ()=>{
+      if(audioEl.paused){
+        document.querySelectorAll("audio").forEach(a=>{ if(a !== audioEl) a.pause(); });
+        audioEl.play();
+      } else {
+        audioEl.pause();
+      }
+    });
+    audioEl.addEventListener("play", ()=>{ playBtn.innerHTML = PAUSE_ICON; });
+    audioEl.addEventListener("pause", ()=>{ playBtn.innerHTML = PLAY_ICON; });
+    audioEl.addEventListener("ended", ()=>{ playBtn.innerHTML = PLAY_ICON; bar.style.width = "0%"; timeLabel.textContent = formatDuration(duration || 0); });
+    audioEl.addEventListener("timeupdate", ()=>{
+      if(audioEl.duration){
+        bar.style.width = (audioEl.currentTime / audioEl.duration * 100) + "%";
+        timeLabel.textContent = formatDuration(audioEl.currentTime);
+      }
+    });
+
+    wrap.appendChild(playBtn);
+    wrap.appendChild(barWrap);
+    wrap.appendChild(timeLabel);
+    return wrap;
+  }
+
   // ---------- Рендер сообщения ----------
   function addMessage(msg){
-    const {id, text, from, time, read, edited, replyTo} = msg;
+    const {id, text, from, time, read, edited, replyTo, audio, duration} = msg;
 
     const row = document.createElement("div");
     row.className = "w-full flex " + (from===currentUser?"justify-end":"justify-start");
@@ -420,7 +480,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
       const replyDiv = document.createElement("div");
       replyDiv.className = "mb-1 pl-2 border-l-2 text-xs opacity-80 truncate cursor-pointer";
       replyDiv.style.borderColor = from===currentUser ? "rgba(255,255,255,0.5)" : "var(--theirs)";
-      replyDiv.textContent = (replyTo.from === currentUser ? "Вы: " : "") + replyTo.text;
+      replyDiv.textContent = (replyTo.from === currentUser ? "Вы: " : "") + (replyTo.audio ? "🎤 Голосовое сообщение" : replyTo.text);
       replyDiv.addEventListener("click", (e)=>{
         e.stopPropagation();
         const target = messages.querySelector(`[data-msg-id="${replyTo.id}"]`);
@@ -432,13 +492,17 @@ document.addEventListener("DOMContentLoaded", ()=>{
       bubble.appendChild(replyDiv);
     }
 
-    const textDiv = document.createElement("div");
-    textDiv.className = "msg-text";
-    textDiv.style.overflowWrap = "anywhere";
-    textDiv.style.wordBreak = "break-word";
-    textDiv.style.whiteSpace = "pre-wrap";
-    textDiv.textContent = text;
-    bubble.appendChild(textDiv);
+    if(audio){
+      bubble.appendChild(buildVoicePlayer(audio, duration, from===currentUser));
+    } else {
+      const textDiv = document.createElement("div");
+      textDiv.className = "msg-text";
+      textDiv.style.overflowWrap = "anywhere";
+      textDiv.style.wordBreak = "break-word";
+      textDiv.style.whiteSpace = "pre-wrap";
+      textDiv.textContent = text;
+      bubble.appendChild(textDiv);
+    }
 
     const timeDiv = document.createElement("div");
     timeDiv.className = "text-[10px] opacity-70 mt-1 text-right flex items-center justify-end gap-1";
@@ -453,68 +517,4 @@ document.addEventListener("DOMContentLoaded", ()=>{
     timeDiv.appendChild(timeText);
 
     if(from === currentUser){
-      const statusSpan = document.createElement("span");
-      statusSpan.dataset.role = "status";
-      statusSpan.className = "inline-flex items-center " + (read ? "opacity-100" : "opacity-60");
-      statusSpan.innerHTML = read ? CHECK_DOUBLE : CHECK_SINGLE;
-      if(read) statusSpan.style.color = "#DCEFFF";
-      timeDiv.appendChild(statusSpan);
-    }
-
-    bubble.appendChild(timeDiv);
-    wrapper.appendChild(bubble);
-    row.appendChild(wrapper);
-
-    attachGestures(row, bubble, replyIcon, ()=>({
-      id,
-      from,
-      text: bubble.querySelector(".msg-text").textContent
-    }));
-
-    const wasNearBottom = isNearBottom();
-    messages.appendChild(row);
-
-    if(from === currentUser){
-      scrollToBottom();
-      hideNewMsgBtn();
-    } else if(wasNearBottom){
-      scrollToBottom();
-    } else {
-      bumpNewMsgBtn();
-    }
-  }
-
-  function getTime(){
-    const d = new Date();
-    return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-  }
-
-  function sendMessage(){
-    const text = input.value.trim();
-    if(!text) return;
-
-    if(editingMessageId){
-      socket.emit("edit-message", { chat: currentChat, user: currentUser, msgId: editingMessageId, text });
-      cancelEdit();
-      return;
-    }
-
-    const msg = {
-      id: Date.now(),
-      text,
-      from: currentUser,
-      time: getTime(),
-      read: false,
-      edited: false,
-      replyTo: replyingTo ? { id: replyingTo.id, text: replyingTo.text, from: replyingTo.from } : null
-    };
-    socket.emit("message", { chat: currentChat, user: currentUser, msg });
-    input.value = "";
-    cancelReply();
-  }
-
-  sendBtn.addEventListener("click", sendMessage);
-  input.addEventListener("keydown", e=>{
-    if(e.key==="Enter") sendMessage();
-  });
-});
+   
