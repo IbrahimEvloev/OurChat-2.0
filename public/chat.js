@@ -31,6 +31,10 @@ document.addEventListener("DOMContentLoaded", ()=>{
   const currentChat = localStorage.getItem("currentChat");
   if(!currentUser || !currentChat){ window.location.href="chats.html"; return; }
 
+  // ---------- Иконки галочек (в стиле WhatsApp) ----------
+  const CHECK_SINGLE = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3 3 7-7.5"/></svg>`;
+  const CHECK_DOUBLE = `<svg width="18" height="16" viewBox="0 0 18 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 8.5l3 3 7-7.5"/><path d="M6.5 8.5l3 3 7-7.5"/></svg>`;
+
   function avatarColor(str){
     let hash = 0;
     for (let i=0;i<str.length;i++){ hash = str.charCodeAt(i) + ((hash<<5)-hash); }
@@ -63,9 +67,10 @@ document.addEventListener("DOMContentLoaded", ()=>{
 
   function showTyping(){
     chatStatus.textContent = "печатает...";
-    chatStatus.className = "text-xs text-blue-500 italic";
+    chatStatus.className = "text-xs italic";
+    chatStatus.style.color = "var(--mine)";
     clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(renderPresence, 2000);
+    typingTimeout = setTimeout(()=>{ chatStatus.style.color = ""; renderPresence(); }, 2000);
   }
 
   fetch(`/status?user=${encodeURIComponent(currentChat)}`)
@@ -119,9 +124,10 @@ document.addEventListener("DOMContentLoaded", ()=>{
     ids.forEach(id=>{
       const statusEl = messages.querySelector(`[data-msg-id="${id}"] [data-role="status"]`);
       if(statusEl){
-        statusEl.textContent = "✓✓";
+        statusEl.innerHTML = CHECK_DOUBLE;
         statusEl.classList.remove("opacity-60");
         statusEl.classList.add("opacity-100");
+        statusEl.style.color = "var(--mine)";
       }
     });
   });
@@ -284,8 +290,8 @@ document.addEventListener("DOMContentLoaded", ()=>{
   }
 
   function flashHighlight(el){
-    el.classList.add("ring-2","ring-blue-400");
-    setTimeout(()=> el.classList.remove("ring-2","ring-blue-400"), 1000);
+    el.style.boxShadow = "0 0 0 2px var(--mine)";
+    setTimeout(()=> { el.style.boxShadow = ""; }, 1000);
   }
 
   // ---------- Рендер сообщения ----------
@@ -297,12 +303,14 @@ document.addEventListener("DOMContentLoaded", ()=>{
     wrapper.dataset.msgId = id;
 
     const bubble = document.createElement("div");
-    bubble.className = `relative px-3 py-2 rounded-2xl text-sm shadow-sm select-none ${from===currentUser?'bg-blue-500 text-white':'bg-gray-200 text-gray-900'}`;
+    bubble.className = `relative px-3 py-2 rounded-2xl text-sm shadow-sm select-none ${from===currentUser?'text-white':'bg-gray-200 text-gray-900'}`;
+    if(from===currentUser) bubble.style.background = "var(--mine)";
     bubble.style.webkitTouchCallout = "none";
 
     if(replyTo){
       const replyDiv = document.createElement("div");
-      replyDiv.className = `mb-1 pl-2 border-l-2 ${from===currentUser?'border-blue-200':'border-blue-400'} text-xs opacity-80 truncate cursor-pointer`;
+      replyDiv.className = "mb-1 pl-2 border-l-2 text-xs opacity-80 truncate cursor-pointer";
+      replyDiv.style.borderColor = from===currentUser ? "rgba(255,255,255,0.5)" : "var(--theirs)";
       replyDiv.textContent = (replyTo.from === currentUser ? "Вы: " : "") + replyTo.text;
       replyDiv.addEventListener("click", (e)=>{
         e.stopPropagation();
@@ -335,8 +343,9 @@ document.addEventListener("DOMContentLoaded", ()=>{
     if(from === currentUser){
       const statusSpan = document.createElement("span");
       statusSpan.dataset.role = "status";
-      statusSpan.className = read ? "opacity-100" : "opacity-60";
-      statusSpan.textContent = read ? "✓✓" : "✓";
+      statusSpan.className = "inline-flex items-center " + (read ? "opacity-100" : "opacity-60");
+      statusSpan.innerHTML = read ? CHECK_DOUBLE : CHECK_SINGLE;
+      if(read) statusSpan.style.color = "#DCEFFF";
       timeDiv.appendChild(statusSpan);
     }
 
