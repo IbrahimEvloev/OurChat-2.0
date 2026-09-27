@@ -24,6 +24,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
   const msgMenuBackdrop = document.getElementById("msgMenuBackdrop");
   const msgMenuBox = document.getElementById("msgMenuBox");
   const menuReply = document.getElementById("menuReply");
+  const menuCopy = document.getElementById("menuCopy");
   const menuEdit = document.getElementById("menuEdit");
   const menuDelete = document.getElementById("menuDelete");
 
@@ -34,6 +35,8 @@ document.addEventListener("DOMContentLoaded", ()=>{
   // ---------- Иконки галочек (в стиле WhatsApp) ----------
   const CHECK_SINGLE = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3 3 7-7.5"/></svg>`;
   const CHECK_DOUBLE = `<svg width="18" height="16" viewBox="0 0 18 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 8.5l3 3 7-7.5"/><path d="M6.5 8.5l3 3 7-7.5"/></svg>`;
+  const DOTS_ICON = `<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><circle cx="4" cy="10" r="1.8"/><circle cx="10" cy="10" r="1.8"/><circle cx="16" cy="10" r="1.8"/></svg>`;
+  const REPLY_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17l-5-5 5-5"/><path d="M4 12h10a5 5 0 0 1 5 5v1"/></svg>`;
 
   function avatarColor(str){
     let hash = 0;
@@ -248,6 +251,24 @@ document.addEventListener("DOMContentLoaded", ()=>{
     if(activeMenuMessage) startReply(activeMenuMessage);
     closeMessageMenu();
   });
+  menuCopy.addEventListener("click", ()=>{
+    if(activeMenuMessage){
+      const text = activeMenuMessage.text;
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).catch(()=>{});
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        try{ document.execCommand("copy"); }catch(e){}
+        document.body.removeChild(ta);
+      }
+    }
+    closeMessageMenu();
+  });
   menuEdit.addEventListener("click", ()=>{
     if(activeMenuMessage) startEdit(activeMenuMessage);
     closeMessageMenu();
@@ -259,34 +280,73 @@ document.addEventListener("DOMContentLoaded", ()=>{
     closeMessageMenu();
   });
 
-  function attachLongPress(el, getMsg){
-    let timer = null;
+  // ---------- Жесты: удержание -> меню, свайп вправо -> ответить ----------
+  function attachGestures(wrapper, bubble, replyIconEl, getMsg){
+    let longPressTimer = null;
     let startX = 0, startY = 0;
+    let dragging = false;
+    let currentDx = 0;
+    const THRESHOLD = 56;
+    const MAX_DRAG = 72;
 
-    const start = (x, y) => {
+    function setDx(dx){
+      currentDx = dx;
+      bubble.style.transform = dx ? `translateX(${dx}px)` : "";
+      const progress = Math.min(1, dx / THRESHOLD);
+      replyIconEl.style.opacity = progress;
+      replyIconEl.style.transform = `translateY(-50%) scale(${0.6 + progress * 0.4})`;
+    }
+
+    function snapBack(){
+      bubble.style.transition = "transform 0.2s ease";
+      replyIconEl.style.transition = "opacity 0.2s ease, transform 0.2s ease";
+      setDx(0);
+      setTimeout(()=>{ bubble.style.transition = ""; replyIconEl.style.transition = ""; }, 200);
+    }
+
+    function onDown(x, y){
       startX = x; startY = y;
-      timer = setTimeout(()=> openMessageMenu(getMsg(), x, y), 450);
-    };
-    const cancel = () => clearTimeout(timer);
-    const move = (x, y) => {
-      if(Math.abs(x - startX) > 10 || Math.abs(y - startY) > 10) cancel();
-    };
+      dragging = false;
+      longPressTimer = setTimeout(()=> openMessageMenu(getMsg(), x, y), 450);
+    }
+    function onMove(x, y){
+      const dx = x - startX;
+      const dy = y - startY;
+      if(!dragging && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)){
+        dragging = true;
+        clearTimeout(longPressTimer);
+      } else if(!dragging && (Math.abs(dx) > 10 || Math.abs(dy) > 10)){
+        clearTimeout(longPressTimer);
+      }
+      if(dragging){
+        const clamped = Math.max(0, Math.min(MAX_DRAG, dx));
+        setDx(clamped);
+      }
+    }
+    function onUp(){
+      clearTimeout(longPressTimer);
+      if(dragging && currentDx >= THRESHOLD){
+        startReply(getMsg());
+      }
+      if(dragging) snapBack();
+      dragging = false;
+    }
 
-    el.addEventListener("touchstart", e=>{
+    wrapper.addEventListener("touchstart", e=>{
       const t = e.touches[0];
-      start(t.clientX, t.clientY);
+      onDown(t.clientX, t.clientY);
     }, {passive:true});
-    el.addEventListener("touchmove", e=>{
+    wrapper.addEventListener("touchmove", e=>{
       const t = e.touches[0];
-      move(t.clientX, t.clientY);
+      onMove(t.clientX, t.clientY);
     }, {passive:true});
-    el.addEventListener("touchend", cancel);
-    el.addEventListener("touchcancel", cancel);
+    wrapper.addEventListener("touchend", onUp);
+    wrapper.addEventListener("touchcancel", onUp);
 
-    el.addEventListener("mousedown", e=> start(e.clientX, e.clientY));
-    el.addEventListener("mouseup", cancel);
-    el.addEventListener("mouseleave", cancel);
-    el.addEventListener("contextmenu", e=> e.preventDefault());
+    wrapper.addEventListener("mousedown", e=> onDown(e.clientX, e.clientY));
+    window.addEventListener("mousemove", e=>{ if(longPressTimer || dragging) onMove(e.clientX, e.clientY); });
+    window.addEventListener("mouseup", ()=>{ if(longPressTimer || dragging) onUp(); });
+    wrapper.addEventListener("contextmenu", e=> e.preventDefault());
   }
 
   function flashHighlight(el){
@@ -299,13 +359,39 @@ document.addEventListener("DOMContentLoaded", ()=>{
     const {id, text, from, time, read, edited, replyTo} = msg;
 
     const wrapper = document.createElement("div");
-    wrapper.className = "flex max-w-[75%] min-w-0 " + (from===currentUser?"ml-auto":"mr-auto");
+    wrapper.className = "relative flex max-w-[75%] min-w-0 " + (from===currentUser?"ml-auto":"mr-auto");
     wrapper.dataset.msgId = id;
+    wrapper.style.touchAction = "pan-y";
+
+    const replyIcon = document.createElement("div");
+    replyIcon.className = "absolute top-1/2 flex items-center justify-center rounded-full pointer-events-none";
+    replyIcon.style.left = "-30px";
+    replyIcon.style.width = "26px";
+    replyIcon.style.height = "26px";
+    replyIcon.style.background = "#E7E5EA";
+    replyIcon.style.color = "var(--mine)";
+    replyIcon.style.opacity = "0";
+    replyIcon.style.transform = "translateY(-50%) scale(0.6)";
+    replyIcon.innerHTML = REPLY_ICON;
+    wrapper.appendChild(replyIcon);
 
     const bubble = document.createElement("div");
-    bubble.className = `relative px-3 py-2 text-sm shadow-sm select-none min-w-0 ${from===currentUser?'text-white rounded-2xl rounded-br-md':'bg-gray-200 text-gray-900 rounded-2xl rounded-bl-md'}`;
+    bubble.className = `bubble relative px-3 py-2 pr-6 text-sm shadow-sm select-none min-w-0 ${from===currentUser?'text-white rounded-2xl rounded-br-md':'bg-gray-200 text-gray-900 rounded-2xl rounded-bl-md'}`;
     if(from===currentUser) bubble.style.background = "#5C5C66";
     bubble.style.webkitTouchCallout = "none";
+
+    const dotsBtn = document.createElement("button");
+    dotsBtn.className = "absolute top-1 right-1 p-1 rounded-full opacity-60 hover:opacity-100";
+    dotsBtn.style.color = "currentColor";
+    dotsBtn.innerHTML = DOTS_ICON;
+    dotsBtn.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      const rect = dotsBtn.getBoundingClientRect();
+      openMessageMenu({
+        id, from, text: bubble.querySelector(".msg-text").textContent
+      }, rect.right, rect.bottom + 4);
+    });
+    bubble.appendChild(dotsBtn);
 
     if(replyTo){
       const replyDiv = document.createElement("div");
@@ -317,7 +403,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
         const target = messages.querySelector(`[data-msg-id="${replyTo.id}"]`);
         if(target){
           target.scrollIntoView({behavior:"smooth", block:"center"});
-          flashHighlight(target.firstChild);
+          flashHighlight(target.querySelector(".bubble"));
         }
       });
       bubble.appendChild(replyDiv);
@@ -355,7 +441,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
     bubble.appendChild(timeDiv);
     wrapper.appendChild(bubble);
 
-    attachLongPress(bubble, ()=>({
+    attachGestures(wrapper, bubble, replyIcon, ()=>({
       id,
       from,
       text: bubble.querySelector(".msg-text").textContent
