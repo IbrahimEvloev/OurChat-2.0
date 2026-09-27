@@ -299,12 +299,12 @@ document.addEventListener("DOMContentLoaded", ()=>{
     const {id, text, from, time, read, edited, replyTo} = msg;
 
     const wrapper = document.createElement("div");
-    wrapper.className = "flex max-w-[75%] " + (from===currentUser?"ml-auto":"mr-auto");
+    wrapper.className = "flex max-w-[75%] min-w-0 " + (from===currentUser?"ml-auto":"mr-auto");
     wrapper.dataset.msgId = id;
 
     const bubble = document.createElement("div");
-    bubble.className = `relative px-3 py-2 rounded-2xl text-sm shadow-sm select-none ${from===currentUser?'text-white':'bg-gray-200 text-gray-900'}`;
-    if(from===currentUser) bubble.style.background = "var(--mine)";
+    bubble.className = `relative px-3 py-2 text-sm shadow-sm select-none min-w-0 ${from===currentUser?'text-white rounded-2xl rounded-br-md':'bg-gray-200 text-gray-900 rounded-2xl rounded-bl-md'}`;
+    if(from===currentUser) bubble.style.background = "#5C5C66";
     bubble.style.webkitTouchCallout = "none";
 
     if(replyTo){
@@ -325,6 +325,9 @@ document.addEventListener("DOMContentLoaded", ()=>{
 
     const textDiv = document.createElement("div");
     textDiv.className = "msg-text";
+    textDiv.style.overflowWrap = "anywhere";
+    textDiv.style.wordBreak = "break-word";
+    textDiv.style.whiteSpace = "pre-wrap";
     textDiv.textContent = text;
     bubble.appendChild(textDiv);
 
