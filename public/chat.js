@@ -26,6 +26,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
   const menuCopy = document.getElementById("menuCopy");
   const menuEdit = document.getElementById("menuEdit");
   const menuDelete = document.getElementById("menuDelete");
+  const globalDotsBtn = document.getElementById("globalDotsBtn");
 
   const currentUser = localStorage.getItem("currentUser");
   const currentChat = localStorage.getItem("currentChat");
@@ -36,6 +37,8 @@ document.addEventListener("DOMContentLoaded", ()=>{
   const CHECK_DOUBLE = `<svg width="18" height="16" viewBox="0 0 18 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 8.5l3 3 7-7.5"/><path d="M6.5 8.5l3 3 7-7.5"/></svg>`;
   const DOTS_ICON = `<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><circle cx="4" cy="10" r="1.8"/><circle cx="10" cy="10" r="1.8"/><circle cx="16" cy="10" r="1.8"/></svg>`;
   const REPLY_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17l-5-5 5-5"/><path d="M4 12h10a5 5 0 0 1 5 5v1"/></svg>`;
+
+  globalDotsBtn.innerHTML = DOTS_ICON;
 
   function avatarColor(str){
     let hash = 0;
@@ -224,6 +227,41 @@ document.addEventListener("DOMContentLoaded", ()=>{
 
   // ---------- Меню сообщения (нажатие и удержание) ----------
   let activeMenuMessage = null;
+  let selectedBubble = null;
+  let clearSelectionOutsideHandler = null;
+
+  function selectMessage(msg, bubbleEl){
+    clearSelection();
+    selectedBubble = bubbleEl;
+    bubbleEl.style.boxShadow = "0 0 0 2px var(--mine)";
+    globalDotsBtn.style.opacity = "1";
+    globalDotsBtn.style.pointerEvents = "auto";
+    globalDotsBtn.onclick = ()=>{
+      const rect = globalDotsBtn.getBoundingClientRect();
+      openMessageMenu(msg, rect.right, rect.bottom + 6);
+    };
+    clearSelectionOutsideHandler = (e)=>{
+      if(e.target === globalDotsBtn || globalDotsBtn.contains(e.target)) return;
+      if(msgMenu && !msgMenu.classList.contains("hidden")) return;
+      clearSelection();
+    };
+    setTimeout(()=>{
+      document.addEventListener("click", clearSelectionOutsideHandler, true);
+      document.addEventListener("touchstart", clearSelectionOutsideHandler, true);
+    }, 50);
+  }
+
+  function clearSelection(){
+    if(selectedBubble){ selectedBubble.style.boxShadow = ""; selectedBubble = null; }
+    globalDotsBtn.style.opacity = "0";
+    globalDotsBtn.style.pointerEvents = "none";
+    globalDotsBtn.onclick = null;
+    if(clearSelectionOutsideHandler){
+      document.removeEventListener("click", clearSelectionOutsideHandler, true);
+      document.removeEventListener("touchstart", clearSelectionOutsideHandler, true);
+      clearSelectionOutsideHandler = null;
+    }
+  }
 
   function openMessageMenu(msg, x, y){
     activeMenuMessage = msg;
@@ -242,6 +280,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
   function closeMessageMenu(){
     msgMenu.classList.add("hidden");
     activeMenuMessage = null;
+    clearSelection();
   }
 
   msgMenuBackdrop.addEventListener("click", closeMessageMenu);
@@ -274,31 +313,14 @@ document.addEventListener("DOMContentLoaded", ()=>{
     closeMessageMenu();
   });
 
-  // ---------- Жесты: удержание -> показать точки, свайп вправо -> ответить ----------
-  function attachGestures(wrapper, bubble, replyIconEl, dotsBtn, getMsg){
+  // ---------- Жесты: удержание на строке -> выделить сообщение, свайп вправо -> ответить ----------
+  function attachGestures(row, bubble, replyIconEl, getMsg){
     let longPressTimer = null;
     let startX = 0, startY = 0;
     let dragging = false;
     let currentDx = 0;
     const THRESHOLD = 56;
     const MAX_DRAG = 72;
-
-    function revealDots(){
-      dotsBtn.style.opacity = "1";
-      dotsBtn.style.pointerEvents = "auto";
-      const hideOnOutsideClick = (e)=>{
-        if(e.target !== dotsBtn && !dotsBtn.contains(e.target)){
-          dotsBtn.style.opacity = "0";
-          dotsBtn.style.pointerEvents = "none";
-          document.removeEventListener("click", hideOnOutsideClick, true);
-          document.removeEventListener("touchstart", hideOnOutsideClick, true);
-        }
-      };
-      setTimeout(()=>{
-        document.addEventListener("click", hideOnOutsideClick, true);
-        document.addEventListener("touchstart", hideOnOutsideClick, true);
-      }, 50);
-    }
 
     function setDx(dx){
       currentDx = dx;
@@ -318,7 +340,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
     function onDown(x, y){
       startX = x; startY = y;
       dragging = false;
-      longPressTimer = setTimeout(revealDots, 450);
+      longPressTimer = setTimeout(()=> selectMessage(getMsg(), bubble), 450);
     }
     function onMove(x, y){
       const dx = x - startX;
@@ -343,21 +365,21 @@ document.addEventListener("DOMContentLoaded", ()=>{
       dragging = false;
     }
 
-    wrapper.addEventListener("touchstart", e=>{
+    row.addEventListener("touchstart", e=>{
       const t = e.touches[0];
       onDown(t.clientX, t.clientY);
     }, {passive:true});
-    wrapper.addEventListener("touchmove", e=>{
+    row.addEventListener("touchmove", e=>{
       const t = e.touches[0];
       onMove(t.clientX, t.clientY);
     }, {passive:true});
-    wrapper.addEventListener("touchend", onUp);
-    wrapper.addEventListener("touchcancel", onUp);
+    row.addEventListener("touchend", onUp);
+    row.addEventListener("touchcancel", onUp);
 
-    wrapper.addEventListener("mousedown", e=> onDown(e.clientX, e.clientY));
+    row.addEventListener("mousedown", e=> onDown(e.clientX, e.clientY));
     window.addEventListener("mousemove", e=>{ if(longPressTimer || dragging) onMove(e.clientX, e.clientY); });
     window.addEventListener("mouseup", ()=>{ if(longPressTimer || dragging) onUp(); });
-    wrapper.addEventListener("contextmenu", e=> e.preventDefault());
+    row.addEventListener("contextmenu", e=> e.preventDefault());
   }
 
   function flashHighlight(el){
@@ -369,10 +391,13 @@ document.addEventListener("DOMContentLoaded", ()=>{
   function addMessage(msg){
     const {id, text, from, time, read, edited, replyTo} = msg;
 
+    const row = document.createElement("div");
+    row.className = "w-full flex " + (from===currentUser?"justify-end":"justify-start");
+    row.dataset.msgId = id;
+    row.style.touchAction = "pan-y";
+
     const wrapper = document.createElement("div");
-    wrapper.className = "relative flex max-w-[75%] min-w-0 " + (from===currentUser?"ml-auto":"mr-auto");
-    wrapper.dataset.msgId = id;
-    wrapper.style.touchAction = "pan-y";
+    wrapper.className = "relative flex max-w-[75%] min-w-0";
 
     const replyIcon = document.createElement("div");
     replyIcon.className = "absolute top-1/2 flex items-center justify-center rounded-full pointer-events-none";
@@ -387,25 +412,9 @@ document.addEventListener("DOMContentLoaded", ()=>{
     wrapper.appendChild(replyIcon);
 
     const bubble = document.createElement("div");
-    bubble.className = `bubble relative px-3 py-2 pr-6 text-sm shadow-sm select-none min-w-0 ${from===currentUser?'text-white rounded-2xl rounded-br-md':'bg-gray-200 text-gray-900 rounded-2xl rounded-bl-md'}`;
+    bubble.className = `bubble relative px-3 py-2 text-sm shadow-sm select-none min-w-0 ${from===currentUser?'text-white rounded-2xl rounded-br-md':'bg-gray-200 text-gray-900 rounded-2xl rounded-bl-md'}`;
     if(from===currentUser) bubble.style.background = "#5C5C66";
     bubble.style.webkitTouchCallout = "none";
-
-    const dotsBtn = document.createElement("button");
-    dotsBtn.className = "absolute top-1 right-1 p-1 rounded-full";
-    dotsBtn.style.color = "currentColor";
-    dotsBtn.style.opacity = "0";
-    dotsBtn.style.pointerEvents = "none";
-    dotsBtn.style.transition = "opacity 0.15s ease";
-    dotsBtn.innerHTML = DOTS_ICON;
-    dotsBtn.addEventListener("click", (e)=>{
-      e.stopPropagation();
-      const rect = dotsBtn.getBoundingClientRect();
-      openMessageMenu({
-        id, from, text: bubble.querySelector(".msg-text").textContent
-      }, rect.right, rect.bottom + 4);
-    });
-    bubble.appendChild(dotsBtn);
 
     if(replyTo){
       const replyDiv = document.createElement("div");
@@ -454,15 +463,16 @@ document.addEventListener("DOMContentLoaded", ()=>{
 
     bubble.appendChild(timeDiv);
     wrapper.appendChild(bubble);
+    row.appendChild(wrapper);
 
-    attachGestures(wrapper, bubble, replyIcon, dotsBtn, ()=>({
+    attachGestures(row, bubble, replyIcon, ()=>({
       id,
       from,
       text: bubble.querySelector(".msg-text").textContent
     }));
 
     const wasNearBottom = isNearBottom();
-    messages.appendChild(wrapper);
+    messages.appendChild(row);
 
     if(from === currentUser){
       scrollToBottom();
