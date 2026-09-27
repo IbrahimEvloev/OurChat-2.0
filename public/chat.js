@@ -37,6 +37,20 @@ document.addEventListener("DOMContentLoaded", ()=>{
   const currentUser = localStorage.getItem("currentUser");
   const currentChat = localStorage.getItem("currentChat");
   if(!currentUser || !currentChat){ window.location.href="chats.html"; return; }
+  if("Notification" in window && Notification.permission === "default"){
+    Notification.requestPermission();
+  }
+
+  function showNotification(from, preview){
+    if(!("Notification" in window) || Notification.permission !== "granted") return;
+    const n = new Notification(from, { body: preview || "Новое сообщение", icon: "/icon-32.png" });
+    n.onclick = ()=>{
+      window.focus();
+      localStorage.setItem("currentChat", from);
+      window.location.href = "chat.html";
+      n.close();
+    };
+  }
 
   // ---------- Иконки галочек (в стиле WhatsApp) ----------
   const CHECK_SINGLE = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3 3 7-7.5"/></svg>`;
